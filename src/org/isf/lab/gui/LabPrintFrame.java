@@ -15,10 +15,12 @@ import javax.swing.JPanel;
 
 import org.isf.generaldata.MessageBundle;
 import org.isf.lab.model.LaboratoryForPrint;
+import org.isf.menu.manager.Context;
 import org.isf.serviceprinting.manager.PrintManager;
 import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.gui.OHServiceExceptionUtil;
 
+@Deprecated
 public class LabPrintFrame extends JDialog{
 
 	/**
@@ -37,6 +39,8 @@ public class LabPrintFrame extends JDialog{
 	private JComboBox printTypeComboBox = null;
 	
 	private int printTypeSelected;
+	
+	private PrintManager printManager = Context.getApplicationContext().getBean(PrintManager.class);
 	
 //	private PrintManager pM;
 	
@@ -87,7 +91,7 @@ public class LabPrintFrame extends JDialog{
 		if(printTypeComboBox==null){
 			printTypeComboBox = new JComboBox();
 			printTypeComboBox.addItem(MessageBundle.getMessage("angal.lab.openwithjasperReport"));
-			printTypeComboBox.addItem(MessageBundle.getMessage("angal.lab.exporttopdffile"));
+//			printTypeComboBox.addItem(MessageBundle.getMessage("angal.lab.exporttopdffile"));
 			printTypeComboBox.addItem(MessageBundle.getMessage("angal.lab.printreport"));
 			printTypeComboBox.addActionListener(new ActionListener() {
 			
@@ -108,7 +112,7 @@ public class LabPrintFrame extends JDialog{
 			
 				public void actionPerformed(ActionEvent arg0) {
 					try {
-						new PrintManager("Laboratory",labList,printTypeSelected);
+						printManager.print("Laboratory",labList,printTypeSelected);
 					} catch (OHServiceException e) {
 						OHServiceExceptionUtil.showMessages(e);
 					}

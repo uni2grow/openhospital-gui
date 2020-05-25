@@ -55,7 +55,7 @@ import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.joda.time.PeriodType;
 
-import com.toedter.calendar.JDateChooser;
+import org.isf.utils.jobjects.CustomJDateChooser;
 
 /**
  * @author Mwithi
@@ -71,7 +71,8 @@ public class TherapyEntryForm extends JDialog {
 	/*
 	 * Managers
 	 */
-	private MedicalBrowsingManager medBrowser = new MedicalBrowsingManager();
+	private MedicalBrowsingManager medBrowser = Context.getApplicationContext().getBean(MedicalBrowsingManager.class);
+	private TherapyManager therapyManager = Context.getApplicationContext().getBean(TherapyManager.class);
 	private ArrayList<Medical> medArray = null;
 
 	/*
@@ -115,7 +116,7 @@ public class TherapyEntryForm extends JDialog {
 	private JSpinner jSpinnerQty;
 	private ArrayList<JRadioButton> radioButtonSet;
 	private JSpinner jSpinnerFreqInPeriod;
-	private JDateChooser therapyStartdate;
+	private CustomJDateChooser therapyStartdate;
 	private GregorianCalendar therapyEndDate;
 	private JSpinner jSpinnerDays;
 	private JSpinner jSpinnerWeeks;
@@ -485,9 +486,9 @@ public class TherapyEntryForm extends JDialog {
 		return jSpinnerFreqInPeriod;
 	}
 
-	private JDateChooser getStartDate() {
+	private CustomJDateChooser getStartDate() {
 		if (therapyStartdate == null) {
-			therapyStartdate = new JDateChooser(new Date());
+			therapyStartdate = new CustomJDateChooser(new Date());
 			therapyStartdate.setLocale(new Locale(GeneralData.LANGUAGE));
 			therapyStartdate.setDateFormatString(dateFormat.toPattern());
 
@@ -763,9 +764,8 @@ public class TherapyEntryForm extends JDialog {
 					boolean notify = false;
 					boolean sms = false;
 
-					TherapyManager thManager = Context.getApplicationContext().getBean(TherapyManager.class);
 					try {
-						thRow = thManager.newTherapy(therapyID, patID, startDate, endDate, medical, qty, unitID, freqInDay, freqInPeriod, note, notify, sms);
+						thRow = therapyManager.newTherapy(therapyID, patID, startDate, endDate, medical, qty, unitID, freqInDay, freqInPeriod, note, notify, sms);
 						therapyID = thRow.getTherapyID();
 					} catch (OHServiceException e){
 						OHServiceExceptionUtil.showMessages(e, TherapyEntryForm.this);

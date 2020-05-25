@@ -42,11 +42,13 @@ import javax.swing.table.TableColumnModel;
 import org.isf.generaldata.GeneralData;
 import org.isf.generaldata.MessageBundle;
 import org.isf.menu.gui.MainMenu;
+import org.isf.menu.manager.Context;
 import org.isf.patient.model.Patient;
 import org.isf.patvac.manager.PatVacManager;
 import org.isf.patvac.model.PatientVaccine;
 import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.gui.OHServiceExceptionUtil;
+import org.isf.utils.jobjects.CustomJDateChooser;
 import org.isf.utils.jobjects.ModalJFrame;
 import org.isf.utils.jobjects.VoLimitedTextField;
 import org.isf.vaccine.manager.VaccineBrowserManager;
@@ -54,7 +56,7 @@ import org.isf.vaccine.model.Vaccine;
 import org.isf.vactype.manager.VaccineTypeBrowserManager;
 import org.isf.vactype.model.VaccineType;
 
-import com.toedter.calendar.JDateChooser;
+import org.isf.utils.jobjects.CustomJDateChooser;
 
 
 public class PatVacBrowser extends ModalJFrame {
@@ -105,14 +107,14 @@ public class PatVacBrowser extends ModalJFrame {
 	private PatVacBrowsingModel model;
 	private PatientVaccine patientVaccine;
 	private int selectedrow;
-	private JDateChooser dateFrom = null;
-	private JDateChooser dateTo = null;
+	private CustomJDateChooser dateFrom = null;
+	private CustomJDateChooser dateTo = null;
 	private final JFrame myFrame;
 
 	public PatVacBrowser() {
 		super();
 		myFrame = this;
-		manager = new PatVacManager();
+		manager = Context.getApplicationContext().getBean(PatVacManager.class);
 		initialize();
 		setVisible(true);
 		
@@ -596,7 +598,7 @@ public class PatVacBrowser extends ModalJFrame {
 			vaccineTypeComboBox.setPreferredSize(new Dimension(200, 30));
 			vaccineTypeComboBox.addItem(new VaccineType("", MessageBundle.getMessage("angal.patvac.allvaccinetype")));			
 			
-			VaccineTypeBrowserManager manager = new VaccineTypeBrowserManager();
+			VaccineTypeBrowserManager manager = Context.getApplicationContext().getBean(VaccineTypeBrowserManager.class);
 			ArrayList<VaccineType> types = null;
 			try {
 				types = manager.getVaccineType();
@@ -634,7 +636,7 @@ public class PatVacBrowser extends ModalJFrame {
 			vaccineComboBox = new JComboBox();
 			vaccineComboBox.setPreferredSize(new Dimension(200, 30));
 		}
-		VaccineBrowserManager manager = new VaccineBrowserManager();
+		VaccineBrowserManager manager = Context.getApplicationContext().getBean(VaccineBrowserManager.class);
 			
 		ArrayList<Vaccine> allVac = null ;
 		vaccineComboBox.addItem( new Vaccine ( "", MessageBundle.getMessage("angal.patvac.allvaccine"),new VaccineType ("","")));
@@ -663,12 +665,12 @@ public class PatVacBrowser extends ModalJFrame {
 	 * @return dateFrom (JPanel)
 	 */
 	
-	private JDateChooser getDateFromPanel() {
+	private CustomJDateChooser getDateFromPanel() {
 		if (dateFrom == null) {
 			GregorianCalendar now = new GregorianCalendar();
 			if (!GeneralData.ENHANCEDSEARCH) now.add(GregorianCalendar.WEEK_OF_YEAR, -1);
 			java.util.Date myDate = now.getTime();
-			dateFrom = new JDateChooser(myDate, "dd/MM/yy");
+			dateFrom = new CustomJDateChooser(myDate, "dd/MM/yy");
 			dateFrom.setDate(myDate);
 			dateFrom.setLocale(new Locale(GeneralData.LANGUAGE));
 			dateFrom.setDateFormatString("dd/MM/yy");
@@ -682,11 +684,11 @@ public class PatVacBrowser extends ModalJFrame {
 	 * 
 	 * @return dateFrom (JPanel)
 	 */
-	private JDateChooser getDateToPanel() {
+	private CustomJDateChooser getDateToPanel() {
 		if (dateTo == null) {
 			GregorianCalendar now = new GregorianCalendar();
 			java.util.Date myDate = now.getTime();
-			dateTo = new JDateChooser(myDate, "dd/MM/yy");
+			dateTo = new CustomJDateChooser(myDate, "dd/MM/yy");
 			dateTo.setLocale(new Locale(GeneralData.LANGUAGE));
 			dateTo.setDateFormatString("dd/MM/yy");
 			dateTo.setDate(myDate);
@@ -715,11 +717,15 @@ public class PatVacBrowser extends ModalJFrame {
 					if (vaccineComboBox.getSelectedItem().toString().equalsIgnoreCase(MessageBundle.getMessage("angal.patvac.allvaccine")))
 						vaccineCode = null;
 					char sex;
-			        if (sexSelect.equals(MessageBundle.getMessage("angal.patvac.female"))) {
+			        if (radiof.isSelected()) {
 						sex='F';
 					}else{
-						if (sexSelect.equals(MessageBundle.getMessage("angal.patvac.male"))) {sex='M'; }
-						else {sex='A';}		
+						if (radiom.isSelected()) {
+							sex='M'; 
+						}
+						else {
+							sex='A';
+						}		
 					}
 			        		        
 			        if (dateFrom.getDate() == null ) {
@@ -791,11 +797,11 @@ public class PatVacBrowser extends ModalJFrame {
 		 * 
 		 */
 		private static final long serialVersionUID = 1L;
-		private PatVacManager manager = new PatVacManager();
+		private PatVacManager manager = Context.getApplicationContext().getBean(PatVacManager.class);
 
 
 		public PatVacBrowsingModel() {
-			PatVacManager manager = new PatVacManager();
+			PatVacManager manager = Context.getApplicationContext().getBean(PatVacManager.class);
 			try {
 				lPatVac = manager.getPatientVaccine(!GeneralData.ENHANCEDSEARCH);
 			} catch (OHServiceException e) {

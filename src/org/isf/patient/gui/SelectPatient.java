@@ -16,6 +16,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.EventListener;
+import java.util.List;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -36,15 +37,19 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+import org.isf.accounting.gui.BillBrowser;
 import org.isf.generaldata.GeneralData;
 import org.isf.generaldata.MessageBundle;
+import org.isf.menu.gui.MainMenu;
+import org.isf.menu.manager.Context;
+import org.isf.patient.gui.PatientInsertExtended.PatientListener;
 import org.isf.patient.manager.PatientBrowserManager;
 import org.isf.patient.model.Patient;
 import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.model.OHExceptionMessage;
 import org.isf.utils.jobjects.VoLimitedTextField;
 
-public class SelectPatient extends JDialog {
+public class SelectPatient extends JDialog implements PatientListener {
 	
 //LISTENER INTERFACE --------------------------------------------------------
 	private EventListenerList selectionListener = new EventListenerList();
@@ -58,6 +63,7 @@ public class SelectPatient extends JDialog {
 		
 	}
 	
+	
 	private void fireSelectedPatient(Patient patient) {
 		new AWTEvent(new Object(), AWTEvent.RESERVED_ID_MAX + 1) {
 
@@ -69,6 +75,7 @@ public class SelectPatient extends JDialog {
 		EventListener[] listeners = selectionListener.getListeners(SelectionListener.class);
 		for (int i = 0; i < listeners.length; i++)
 			((SelectionListener)listeners[i]).patientSelected(patient);
+			//System.out.println("patient ..............."+patient.getFirstName());
 	}
 //---------------------------------------------------------------------------	
 	private static final long serialVersionUID = 1L;
@@ -84,6 +91,10 @@ public class SelectPatient extends JDialog {
 	private JButton jSearchButton;
 	private JPanel jPanelDataPatient;
 	private Patient patient;
+	public Patient getPatient() {
+		return patient;
+	}
+	private JButton buttonNew;
 	private PatientSummary ps;
 	private String[] patColums = {
 			MessageBundle.getMessage("angal.common.code"),
@@ -92,7 +103,7 @@ public class SelectPatient extends JDialog {
 	private int[] patColumsWidth = { 100, 250 };
 	private boolean[] patColumsResizable = { false, true };
 
-	PatientBrowserManager patManager = new PatientBrowserManager();
+	PatientBrowserManager patManager = Context.getApplicationContext().getBean(PatientBrowserManager.class);
 	ArrayList<Patient> patArray = new ArrayList<Patient>();
 	ArrayList<Patient> patSearch = new ArrayList<Patient>();
 	private String lastKey = "";
@@ -105,7 +116,7 @@ public class SelectPatient extends JDialog {
 			}catch(OHServiceException ex){
 				if(ex.getMessages() != null){
 					for(OHExceptionMessage msg : ex.getMessages()){
-						JOptionPane.showMessageDialog(null, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
+						JOptionPane.showMessageDialog(SelectPatient.this, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
 					}
 				}
 				patArray = new ArrayList<Patient>();
@@ -138,7 +149,7 @@ public class SelectPatient extends JDialog {
 			}catch(OHServiceException ex){
 				if(ex.getMessages() != null){
 					for(OHExceptionMessage msg : ex.getMessages()){
-						JOptionPane.showMessageDialog(null, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
+						JOptionPane.showMessageDialog(SelectPatient.this, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
 					}
 				}
 				patArray = new ArrayList<Patient>();
@@ -171,7 +182,7 @@ public class SelectPatient extends JDialog {
 			}catch(OHServiceException ex){
 				if(ex.getMessages() != null){
 					for(OHExceptionMessage msg : ex.getMessages()){
-						JOptionPane.showMessageDialog(null, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
+						JOptionPane.showMessageDialog(SelectPatient.this, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
 					}
 				}
 				patArray = new ArrayList<Patient>();
@@ -194,6 +205,45 @@ public class SelectPatient extends JDialog {
 		if (GeneralData.ENHANCEDSEARCH) {
 			jSearchButton.doClick();
 		}
+	}
+	public SelectPatient(JFrame owner, boolean abbleAddPatient, boolean full) {
+		super(owner, true);
+		if (!GeneralData.ENHANCEDSEARCH) {
+			if(!full)
+				try {
+					patArray = patManager.getPatientWithHeightAndWeight(null);
+				} catch (OHServiceException e2) {
+					if(e2.getMessages() != null){
+						for(OHExceptionMessage msg : e2.getMessages()){
+							JOptionPane.showMessageDialog(SelectPatient.this, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
+						}
+					}
+				}
+			else
+				try {
+					patArray = patManager.getPatient();
+				} catch (OHServiceException e1) {
+					if(e1.getMessages() != null){
+						for(OHExceptionMessage msg : e1.getMessages()){
+							JOptionPane.showMessageDialog(SelectPatient.this, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
+						}
+					}
+				}
+			patSearch = patArray;
+		}
+		ps = new PatientSummary(patient);
+		initComponents();
+		addWindowListener(new WindowAdapter() {
+
+			public void windowClosing(WindowEvent e) {
+				// to free memory
+				patArray.clear();
+				patSearch.clear();
+				dispose();
+			}
+		});
+		setLocationRelativeTo(null);
+		buttonNew.setVisible(abbleAddPatient);
 	}
 
 	private void initComponents() {
@@ -373,7 +423,8 @@ public class SelectPatient extends JDialog {
 						
 						int index = jTablePatient.getSelectedRow();
 						patient = (Patient)jTablePatient.getValueAt(index, -1);
-						patient.setPhoto(patient.getPhoto());
+						if (patient.getPhoto() != null)
+							patient.setPhoto(patient.getPhoto());
 						updatePatientSummary();
 						
 					}
@@ -439,7 +490,10 @@ public class SelectPatient extends JDialog {
 			jPanelTop = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			jPanelTop.add(getJLabelSearch());
 			jPanelTop.add(getJTextFieldSearchPatient());
-			if (GeneralData.ENHANCEDSEARCH) jPanelTop.add(getJSearchButton());
+			if (MainMenu.checkUserGrants("btnadmnew"))
+				jPanelTop.add(getButtonNew());
+			if (GeneralData.ENHANCEDSEARCH)
+				jPanelTop.add(getJSearchButton());
 		}
 		return jPanelTop;
 	}
@@ -457,7 +511,7 @@ public class SelectPatient extends JDialog {
 					}catch(OHServiceException ex){
 						if(ex.getMessages() != null){
 							for(OHExceptionMessage msg : ex.getMessages()){
-								JOptionPane.showMessageDialog(null, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
+								JOptionPane.showMessageDialog(SelectPatient.this, msg.getMessage(), msg.getTitle() == null ? "" : msg.getTitle(), msg.getLevel().getSwingSeverity());
 							}
 						}
 						patArray = new ArrayList<Patient>();
@@ -467,6 +521,29 @@ public class SelectPatient extends JDialog {
 			});
 		}
 		return jSearchButton;
+	}
+	private JButton getButtonNew() {
+		//JButton buttonNew = new JButton(MessageBundle.getMessage("angal.admission.newpatient"));
+		buttonNew = new JButton(MessageBundle.getMessage("angal.admission.newpatient"));
+		buttonNew.setMnemonic(KeyEvent.VK_N);
+		buttonNew.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent event) {
+
+				if (GeneralData.PATIENTEXTENDED) {
+					PatientInsertExtended newrecord = new PatientInsertExtended(SelectPatient.this, new Patient(),
+							true);
+					newrecord.addPatientListener((PatientListener) SelectPatient.this);
+					newrecord.setVisible(true);
+				} else {
+					PatientInsert newrecord = new PatientInsert(SelectPatient.this, new Patient(), true);
+					newrecord.addPatientListener((org.isf.patient.gui.PatientInsert.PatientListener) SelectPatient.this);
+					newrecord.setVisible(true);
+				}
+
+			}
+		});
+		return buttonNew;
 	}
 
 	private JPanel getJPanelButtons() {
@@ -542,5 +619,28 @@ public class SelectPatient extends JDialog {
 			setHorizontalAlignment(CENTER);	   
 			return cell;
 	   }
+	}
+
+	public void setButtonNew(JButton buttonNew) {
+		this.buttonNew = buttonNew;
+	}
+	List<BillBrowser> billBrowserListeners = new ArrayList<BillBrowser>();
+	public void addSelectionListener(BillBrowser l) {
+		billBrowserListeners.add(l);
+	}
+
+
+	@Override
+	public void patientUpdated(AWTEvent e) {}
+
+
+	@Override
+	public void patientInserted(AWTEvent e) {
+		Patient patient = (Patient) e.getSource();
+		patSearch.add(0, patient);
+		((SelectPatientModel) jTablePatient.getModel()).fireTableDataChanged();
+		if (jTablePatient.getRowCount() > 0)
+			jTablePatient.setRowSelectionInterval(0, 0);
+		
 	}
 }

@@ -66,7 +66,7 @@ import org.isf.utils.exception.gui.OHServiceExceptionUtil;
 import org.isf.utils.exception.model.OHExceptionMessage;
 import org.isf.utils.time.RememberDates;
 
-import com.toedter.calendar.JDateChooser;
+import org.isf.utils.jobjects.CustomJDateChooser;
 /**
  * Create a single Patient Bill
  * it affects tables BILLS, BILLITEMS and BILLPAYMENTS
@@ -101,7 +101,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 			((PatientBillListener)listeners[i]).billInserted(event);
 	}
 //---------------------------------------------------------------------------
-	
+	/**
 	public void patientSelected(Patient patient) {
 		patientSelected = patient;
 		ArrayList<Bill> patientPendingBills;
@@ -122,18 +122,173 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 			thisBill.setPatName(patientSelected.getName());
 		} else {
 			if (patientPendingBills.size() == 1) {
-				JOptionPane.showMessageDialog(null, MessageBundle.getMessage("angal.admission.thispatienthasapendingbill"),
-						MessageBundle.getMessage("angal.admission.bill"), JOptionPane.PLAIN_MESSAGE);
-				setBill(patientPendingBills.get(0));
-				insert = false;
+				if(GeneralData.ALLOWMULTIPLEOPENEDBILL){
+					int response = JOptionPane.showConfirmDialog(PatientBillEdit.this,
+							MessageBundle.getMessage("angal.admission.thispatienthasapendingbillcreateanother"), 
+							MessageBundle.getMessage("angal.admission.bill"), 
+							JOptionPane.YES_NO_OPTION); 
+					if(response==JOptionPane.YES_OPTION){
+						insert = true;
+							//thisBill.setPatID(patientSelected.getCode());
+							thisBill.setPatient(patientSelected);
+							thisBill.setPatient(true);
+							thisBill.setPatName(patientSelected.getName());							
+					}else{
+						insert = false;
+						setBill(patientPendingBills.get(0));
+						
+						// ****** Check if it is same month **************
+						checkIfsameMonth();
+						// **********************************************
+					}
+				}
+				else{
+					JOptionPane.showMessageDialog(null, MessageBundle.getMessage("angal.admission.thispatienthasapendingbill"),
+							MessageBundle.getMessage("angal.admission.bill"), JOptionPane.PLAIN_MESSAGE);					
+					insert = false;
+					setBill(patientPendingBills.get(0));
+					
+					// ******* Check if it is same month **************
+					checkIfsameMonth();
+					// ************************************************
+				}
 			} else {
-				JOptionPane.showConfirmDialog(null, MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientcontinue"),
-						MessageBundle.getMessage("angal.admission.bill"), JOptionPane.WARNING_MESSAGE);
-				return;
+
+				if(GeneralData.ALLOWMULTIPLEOPENEDBILL){
+					int response = JOptionPane.showConfirmDialog(PatientBillEdit.this,
+							MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientcontinuecreateanother"), 
+							MessageBundle.getMessage("angal.admission.bill"), 
+							JOptionPane.YES_NO_OPTION); 
+					
+					if(response==JOptionPane.YES_OPTION){
+						insert = true;
+							//thisBill.setPatID(patientSelected.getCode());
+							thisBill.setPatient(patientSelected);
+							thisBill.setPatient(true);
+							thisBill.setPatName(patientSelected.getName());						
+					}else if(response==JOptionPane.NO_OPTION) {
+						//il faut proposer quelque chose
+						int resp = JOptionPane.showConfirmDialog(PatientBillEdit.this,
+								MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientopenlastopenenedbill"), 
+								MessageBundle.getMessage("angal.admission.bill"), 
+								JOptionPane.YES_NO_OPTION);
+						if(resp==JOptionPane.YES_OPTION){							
+							insert = false;
+							setBill(patientPendingBills.get(0));						
+							// ******* Check if it is same month **************
+							checkIfsameMonth();
+							// ************************************************
+						}
+					}else{
+						return;
+					}
+				}else{
+					JOptionPane.showConfirmDialog(null,MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientcontinue"),
+							MessageBundle.getMessage("angal.admission.bill"), JOptionPane.WARNING_MESSAGE);
+					return;
+				}				
 			}
 		} 
 		updateUI();
+		//jTextFieldSearch.setEnabled(true);
+		//jTextFieldSearch.grabFocus();
+		checkIfsameMonth();
+	} **/
+	
+	public void patientSelected(Patient patient){
+		// patientSelected = patient;
+		setPatientSelected(patient);
+        ArrayList<Bill> patientPendingBills = new ArrayList<Bill>();
+		try {
+			patientPendingBills = billManager.getPendingBills(patient.getCode());
+		} catch (OHServiceException e) {
+			e.printStackTrace();
+		}
+		if (patientPendingBills.isEmpty()){
+			// BILL
+			thisBill.setPatient(patientSelected);
+			thisBill.setPatient(true);
+			thisBill.setPatName(patientSelected.getName());
+		} else {
+			if (patientPendingBills.size() == 1) {
+				if(GeneralData.ALLOWMULTIPLEOPENEDBILL){
+					int response = JOptionPane.showConfirmDialog(PatientBillEdit.this,
+							MessageBundle.getMessage("angal.admission.thispatienthasapendingbillcreateanother"), 
+							MessageBundle.getMessage("angal.admission.bill"), 
+							JOptionPane.YES_NO_OPTION); 
+					if(response==JOptionPane.YES_OPTION){
+						insert = true;
+							//thisBill.setPatID(patientSelected.getCode());
+							thisBill.setPatient(patientSelected);
+							thisBill.setPatient(true);
+							thisBill.setPatName(patientSelected.getName());							
+					}else{
+						insert = false;
+						setBill(patientPendingBills.get(0));
+						
+						/******* Check if it is same month ***************/
+						//checkIfsameMonth();
+						/*************************************************/
+					}
+				}
+				else{
+					JOptionPane.showMessageDialog(null, MessageBundle.getMessage("angal.admission.thispatienthasapendingbill"),
+							MessageBundle.getMessage("angal.admission.bill"), JOptionPane.PLAIN_MESSAGE);					
+					insert = false;
+					setBill(patientPendingBills.get(0));
+					
+					/******* Check if it is same month ***************/
+					//checkIfsameMonth();
+					/*************************************************/
+				}
+			} else {
+
+				if(GeneralData.ALLOWMULTIPLEOPENEDBILL){
+					int response = JOptionPane.showConfirmDialog(PatientBillEdit.this,
+							MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientcontinuecreateanother"), 
+							MessageBundle.getMessage("angal.admission.bill"), 
+							JOptionPane.YES_NO_OPTION); 
+					
+					if(response==JOptionPane.YES_OPTION){
+						insert = true;
+							//thisBill.setPatID(patientSelected.getCode());
+							thisBill.setPatient(patientSelected);
+							thisBill.setPatient(true);
+							thisBill.setPatName(patientSelected.getName());						
+					}else if(response==JOptionPane.NO_OPTION) {
+						//il faut proposer quelque chose
+						int resp = JOptionPane.showConfirmDialog(PatientBillEdit.this,
+								MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientopenlastopenenedbill"), 
+								MessageBundle.getMessage("angal.admission.bill"), 
+								JOptionPane.YES_NO_OPTION);
+						if(resp==JOptionPane.YES_OPTION){							
+							insert = false;
+							setBill(patientPendingBills.get(0));						
+							/******* Check if it is same month ***************/
+							//checkIfsameMonth();
+							/*************************************************/
+						} else {
+							dispose();
+						}
+					}else{
+						return;
+					}
+				}else{
+					JOptionPane.showConfirmDialog(null,MessageBundle.getMessage("angal.admission.thereismorethanonependingbillforthispatientcontinue"),
+							MessageBundle.getMessage("angal.admission.bill"), JOptionPane.WARNING_MESSAGE);
+					return;
+				}				
+			}
+		}
+		//jTextFieldSearch.setEnabled(true);
+		//jTextFieldSearch.grabFocus();
+		//checkIfsameMonth();
+		//jTableBill.setModel(new BillTableModel());
+		//updateTotals();
+		updateUI();
 	}
+	
+	
 	
 	private static final long serialVersionUID = 1L;
 	private JTable jTableBill;
@@ -158,7 +313,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 	private JTable jTableBalance;
 	private JScrollPane jScrollPaneBalance;
 	private JPanel jPanelTop;
-	private JDateChooser jCalendarDate;
+	private CustomJDateChooser jCalendarDate;
 	private JLabel jLabelDate;
 	private JLabel jLabelPatient;
 	private JButton jButtonRemoveItem;
@@ -216,17 +371,17 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 	private String currencyCod;
 	
 	//Prices and Lists (ALL)
-	private PriceListManager prcManager = new PriceListManager();
+	private PriceListManager prcManager = Context.getApplicationContext().getBean(PriceListManager.class);
 	private ArrayList<Price> prcArray;
 	private ArrayList<PriceList> lstArray;
 	
 	//PricesOthers (ALL)
-	private PricesOthersManager othManager = new PricesOthersManager();
+	private PricesOthersManager othManager = Context.getApplicationContext().getBean(PricesOthersManager.class);
 	private ArrayList<PricesOthers> othPrices;
 
 	//Items and Payments (ALL)
 	private BillBrowserManager billManager = new BillBrowserManager(Context.getApplicationContext().getBean(AccountingIoOperations.class));
-	private PatientBrowserManager patManager = new PatientBrowserManager();
+	private PatientBrowserManager patManager = Context.getApplicationContext().getBean(PatientBrowserManager.class);
 	
 	//Prices, Items and Payments for the tables
 	private ArrayList<BillItems> billItems = new ArrayList<BillItems>();
@@ -290,7 +445,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 	
 	private void initCurrencyCod() {
 		try {
-			this.currencyCod = new HospitalBrowsingManager().getHospitalCurrencyCod();
+			this.currencyCod = Context.getApplicationContext().getBean(HospitalBrowsingManager.class).getHospitalCurrencyCod();
 		} catch (OHServiceException e) {
 			this.currencyCod = null;
 			OHServiceExceptionUtil.showMessages(e, PatientBillEdit.this);
@@ -480,7 +635,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 		return jComboBoxPriceList;
 	}
 	
-	private JDateChooser getJCalendarDate() {
+	private CustomJDateChooser getJCalendarDate() {
 		if (jCalendarDate == null) {
 			
 			if (insert) {
@@ -488,10 +643,10 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 				billDate.set(Calendar.YEAR, RememberDates.getLastBillDateGregorian().get(Calendar.YEAR));
 				billDate.set(Calendar.MONTH, RememberDates.getLastBillDateGregorian().get(Calendar.MONTH));
 				billDate.set(Calendar.DAY_OF_MONTH, RememberDates.getLastBillDateGregorian().get(Calendar.DAY_OF_MONTH));
-				jCalendarDate = new JDateChooser(billDate.getTime()); 
+				jCalendarDate = new CustomJDateChooser(billDate.getTime()); 
 			} else { 
 				//get BillDate
-				jCalendarDate = new JDateChooser(thisBill.getDate().getTime());
+				jCalendarDate = new CustomJDateChooser(thisBill.getDate().getTime());
 				billDate.setTime(jCalendarDate.getDate());
 			}
 			jCalendarDate.setLocale(new Locale(GeneralData.LANGUAGE));
@@ -948,7 +1103,6 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 						
 						try {
 							
-							BillBrowserManager billManager = Context.getApplicationContext().getBean(BillBrowserManager.class);
 							billManager.newBill(newBill, billItems, payItems);
 							
 						} catch(OHServiceException ex) {
@@ -990,6 +1144,11 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 						fireBillInserted(updateBill);
 						
 					}
+					if (hasNewPayments()) {
+
+						TxtPrinter.getTxtPrinter();
+						new GenericReportBill(thisBill.getId(), "PatientBillPayments", false, !TxtPrinter.PRINT_WITHOUT_ASK);
+					}
 					if (paid && GeneralData.RECEIPTPRINTER) {
 						
 						TxtPrinter.getTxtPrinter();
@@ -1002,7 +1161,11 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 		}
 		return jButtonSave;
 	}
-	
+
+	private boolean hasNewPayments() {
+		return (insert && payItems.size() > 0) || (payItems.size() - payItemsSaved) > 0;
+	}
+
 	private JButton getJButtonPrintPayment() {
 		if (jButtonPrintPayment == null) {
 			jButtonPrintPayment = new JButton();
@@ -1050,7 +1213,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 							
 							icon = new ImageIcon("rsc/icons/calendar_dialog.png"); //$NON-NLS-1$
 	
-							JDateChooser datePayChooser = new JDateChooser(new Date());
+							CustomJDateChooser datePayChooser = new CustomJDateChooser(new Date());
 							datePayChooser.setLocale(new Locale(GeneralData.LANGUAGE));
 							datePayChooser.setDateFormatString("dd/MM/yy - HH:mm:ss"); //$NON-NLS-1$
 							
@@ -1160,7 +1323,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 						
 						icon = new ImageIcon("rsc/icons/calendar_dialog.png"); //$NON-NLS-1$
 						
-						JDateChooser datePayChooser = new JDateChooser(new Date());
+						CustomJDateChooser datePayChooser = new CustomJDateChooser(new Date());
 						datePayChooser.setLocale(new Locale(GeneralData.LANGUAGE));
 						datePayChooser.setDateFormatString("dd/MM/yy - HH:mm:ss"); //$NON-NLS-1$
 						
@@ -1262,7 +1425,7 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 						
 						icon = new ImageIcon("rsc/icons/calendar_dialog.png"); //$NON-NLS-1$
 						
-						JDateChooser datePayChooser = new JDateChooser(new Date());
+						CustomJDateChooser datePayChooser = new CustomJDateChooser(new Date());
 						datePayChooser.setLocale(new Locale(GeneralData.LANGUAGE));
 						datePayChooser.setDateFormatString("dd/MM/yy - HH:mm:ss"); //$NON-NLS-1$
 						
@@ -1921,5 +2084,32 @@ public class PatientBillEdit extends JDialog implements SelectionListener {
 		return (billDate.get(Calendar.YEAR) == today.get(Calendar.YEAR)) &&
 			   (billDate.get(Calendar.MONTH) == today.get(Calendar.MONTH)) &&
 			   (billDate.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH));
+	}
+	
+	public void checkIfsameMonth(){
+		if (!insert) {
+			//System.out.println("la date de la facture: "+thisBill.getDate().getTime().toString());
+			//GregorianCalendar thisday = TimeTools.getServerDateTime();
+			GregorianCalendar thisday = new GregorianCalendar();
+			GregorianCalendar billDate = thisBill.getDate();
+			int thisMonth = thisday.get(GregorianCalendar.MONTH);
+			int billMonth = billDate.get(GregorianCalendar.MONTH);
+			int thisYear = thisday.get(GregorianCalendar.YEAR);
+			int billBillYear = billDate.get(GregorianCalendar.YEAR);
+			if(thisYear>billBillYear || thisMonth>billMonth){
+				jButtonAddMedical.setEnabled(false);
+				jButtonAddOperation.setEnabled(false);
+				jButtonAddExam.setEnabled(false);
+				jButtonAddOther.setEnabled(false);
+				jButtonCustom.setEnabled(false);
+				jButtonRemoveItem.setEnabled(false);
+				//jTextFieldSearch.setEnabled(false);
+				//jTextFieldDescription.setEnabled(false);
+				//jTextFieldQty.setEnabled(false);
+				//jTextFieldPrice.setEnabled(false);
+				//jButtonAddPrescription.setEnabled(false);
+				jCalendarDate.grabFocus(); 
+			}
+		}
 	}
 }

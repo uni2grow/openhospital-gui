@@ -31,6 +31,7 @@ import javax.swing.border.EmptyBorder;
 
 import org.isf.generaldata.GeneralData;
 import org.isf.generaldata.MessageBundle;
+import org.isf.menu.manager.Context;
 import org.isf.menu.manager.UserBrowsingManager;
 import org.isf.patient.gui.SelectPatient;
 import org.isf.patient.gui.SelectPatient.SelectionListener;
@@ -41,7 +42,7 @@ import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.gui.OHServiceExceptionUtil;
 import org.isf.utils.jobjects.JDateAndTimeChooserDialog;
 
-import com.toedter.calendar.JDateChooser;
+import org.isf.utils.jobjects.CustomJDateChooser;
 
 /**
  * 
@@ -64,7 +65,7 @@ public class SmsEdit extends JDialog implements SelectionListener {
 	private JLabel jCharactersLabel;
 	private JLabel jLabelCount;
 	private JTextArea jTextArea;
-	private JDateChooser jSchedDateChooser;
+	private CustomJDateChooser jSchedDateChooser;
 	private JLabel jSchedTimeLabel;
 	private JTextField jSchedTimeTextField;
 	private JButton JTimeButton;
@@ -72,7 +73,7 @@ public class SmsEdit extends JDialog implements SelectionListener {
 	
 	private int MAX_LENGHT;
 	
-	private SmsManager smsManager = new SmsManager();
+	private SmsManager smsManager = Context.getApplicationContext().getBean(SmsManager.class);
 	
 	/**
 	 * Launch the application.
@@ -202,9 +203,9 @@ public class SmsEdit extends JDialog implements SelectionListener {
 		return jPatientButton;
 	}
 	
-	private JDateChooser getJSchedDateChooser() {
+	private CustomJDateChooser getJSchedDateChooser() {
 		if (jSchedDateChooser == null) {
-			jSchedDateChooser = new JDateChooser();
+			jSchedDateChooser = new CustomJDateChooser();
 			jSchedDateChooser.setLocale(new Locale(GeneralData.LANGUAGE));
 			jSchedDateChooser.setDate(new Date());
 			jSchedDateChooser.setDateFormatString("dd/MM/yy"); //$NON-NLS-1$

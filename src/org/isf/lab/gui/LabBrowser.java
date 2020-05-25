@@ -48,6 +48,7 @@ import org.isf.lab.service.LabIoOperations;
 import org.isf.menu.gui.MainMenu;
 import org.isf.menu.manager.Context;
 import org.isf.patient.model.Patient;
+import org.isf.serviceprinting.manager.PrintManager;
 import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.gui.OHServiceExceptionUtil;
 import org.isf.utils.jobjects.ModalJFrame;
@@ -72,7 +73,7 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 	private static final String VERSION=MessageBundle.getMessage("angal.versione");
 	
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-	private static final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss");
+	private static final SimpleDateFormat dateTimeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 	
 	private JPanel jContentPane = null;
 	private JPanel jButtonPanel = null;
@@ -97,7 +98,8 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 	private int[] pColumwidth = { 100, 200, 200, 200 };
 	private int[] maxWidth = {150, 200, 200, 200};
 	private boolean[] columnsVisible = { true, GeneralData.LABEXTENDED, true, true};
-	private LabManager manager;
+	private LabManager labManager = Context.getApplicationContext().getBean(LabManager.class);
+	private PrintManager printManager = Context.getApplicationContext().getBean(PrintManager.class);
 	private LabBrowsingModel model;
 	private Laboratory laboratory;
 	private int selectedrow;
@@ -116,7 +118,6 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 	public LabBrowser() {
 		super();
 		myFrame = this;
-		manager = new LabManager(Context.getApplicationContext().getBean(LabIoOperations.class));
 		initialize();
 		setResizable(false);
 		setVisible(true);
@@ -192,9 +193,10 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 					
 					try {
 						ArrayList<LaboratoryForPrint> labs;
-						labs = manager.getLaboratoryForPrint(typeSelected, dateFrom.getDate(), dateTo.getDate());
+						labs = labManager.getLaboratoryForPrint(typeSelected, dateFrom.getDate(), dateTo.getDate());
 						if (!labs.isEmpty()) {
-							new LabPrintFrame(myFrame, labs); 
+							
+							printManager.print("Laboratory",labs,0);
 						}
 					} catch (OHServiceException e) {
 						OHServiceExceptionUtil.showMessages(e);
@@ -225,11 +227,11 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 					if (GeneralData.LABEXTENDED) {
 						LabEditExtended editrecord = new LabEditExtended(myFrame, laboratory, false);
 						editrecord.addLabEditExtendedListener(LabBrowser.this);
-						editrecord.setVisible(true);
+						editrecord.showAsModal(LabBrowser.this);
 					} else {
 						LabEdit editrecord = new LabEdit(myFrame, laboratory, false);
 						editrecord.addLabEditListener(LabBrowser.this);
-						editrecord.setVisible(true);
+						editrecord.showAsModal(LabBrowser.this);
 					}
 				}
 			});
@@ -248,26 +250,26 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 			buttonNew.setMnemonic(KeyEvent.VK_N);
 			buttonNew.addActionListener(new ActionListener() {
 
-				public void actionPerformed(ActionEvent event) {
-					laboratory = new Laboratory(0, new Exam("", "",
-							new ExamType("", ""), 0, ""),
-							new GregorianCalendar(), "P", "", new Patient(), "");
-					if (GeneralData.LABEXTENDED) {
-						if (GeneralData.LABMULTIPLEINSERT) {
-							LabNew editrecord = new LabNew(myFrame);
-							editrecord.addLabListener(LabBrowser.this);
-							editrecord.setVisible(true);
-						} else {
-							LabEditExtended editrecord = new LabEditExtended(myFrame, laboratory, true);
-							editrecord.addLabEditExtendedListener(LabBrowser.this);
-							editrecord.setVisible(true);
-						}
-					} else {
-						LabEdit editrecord = new LabEdit(myFrame, laboratory, true);
-						editrecord.addLabEditListener(LabBrowser.this);
-						editrecord.setVisible(true);
-					}
-				}
+                public void actionPerformed(ActionEvent event) {
+                    laboratory = new Laboratory(0, new Exam("", "",
+                                    new ExamType("", ""), 0, ""),
+                                    new GregorianCalendar(), "P", "", new Patient(), "");
+                    if (GeneralData.LABEXTENDED) {
+                        if (GeneralData.LABMULTIPLEINSERT) {
+                                LabNew editrecord = new LabNew(myFrame);
+                                editrecord.addLabListener(LabBrowser.this);
+                                editrecord.setVisible(true);
+                        } else {
+                                LabEditExtended editrecord = new LabEditExtended(myFrame, laboratory, true);
+                                editrecord.addLabEditExtendedListener(LabBrowser.this);
+                                editrecord.setVisible(true);
+                        }
+                    } else {
+                        LabEdit editrecord = new LabEdit(myFrame, laboratory, true);
+                        editrecord.addLabEditListener(LabBrowser.this);
+                        editrecord.setVisible(true);
+                    }
+                }
 			});
 		}
 		return buttonNew;
@@ -301,7 +303,7 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 							boolean deleted;
 							
 							try {
-								deleted = manager.deleteLaboratory(lab);
+								deleted = labManager.deleteLaboratory(lab);
 							} catch (OHServiceException e) {
 								deleted = false;
 								OHServiceExceptionUtil.showMessages(e);
@@ -405,7 +407,7 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 	 * @return comboExams (JComboBox)
 	 */
 	private JComboBox getComboExams() {
-		ExamBrowsingManager managerExams = new ExamBrowsingManager();
+		ExamBrowsingManager managerExams = Context.getApplicationContext().getBean(ExamBrowsingManager.class);
 		if (comboExams == null) {
 			comboExams = new JComboBox();
 			comboExams.setPreferredSize(new Dimension(200, 30));
@@ -527,7 +529,7 @@ public class LabBrowser extends ModalJFrame implements LabListener, LabEditListe
 		 * 
 		 */
 		private static final long serialVersionUID = 1L;
-		private LabManager manager = new LabManager(Context.getApplicationContext().getBean(LabIoOperations.class));
+		private LabManager manager = Context.getApplicationContext().getBean(LabManager.class,Context.getApplicationContext().getBean(LabIoOperations.class));
 
 		public LabBrowsingModel(String exam, GregorianCalendar dateFrom, GregorianCalendar dateTo) {
 			try {

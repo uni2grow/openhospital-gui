@@ -22,6 +22,7 @@ import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
@@ -30,10 +31,13 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -44,6 +48,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -62,13 +67,20 @@ import org.isf.medstockmovtype.model.MovementType;
 import org.isf.medtype.manager.MedicalTypeBrowserManager;
 import org.isf.medtype.model.MedicalType;
 import org.isf.menu.gui.MainMenu;
+import org.isf.menu.manager.Context;
+import org.isf.stat.gui.report.GenericReportPharmaceuticalStockCard;
+import org.isf.supplier.manager.SupplierBrowserManager;
+import org.isf.supplier.model.Supplier;
 import org.isf.utils.excel.ExcelExporter;
 import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.gui.OHServiceExceptionUtil;
 import org.isf.utils.jobjects.DateTextField;
 import org.isf.utils.jobjects.ModalJFrame;
+import org.isf.utils.jobjects.StockCardDialog;
+import org.isf.utils.jobjects.StockLedgerDialog;
 import org.isf.utils.time.TimeTools;
 import org.isf.ward.model.Ward;
+import org.isf.ward.manager.WardBrowserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,6 +103,8 @@ public class MovStockBrowser extends ModalJFrame {
 	private JButton filterButton;
 	private JButton exportToExcel;
 //	private JButton importFromExcel;
+	private JButton stockCardButton;
+	private JButton stockLedgerButton;
 	private JPanel filterPanel;
 	private JCheckBox jCheckBoxKeepFilter;
 	private JComboBox medicalBox;
@@ -134,10 +148,32 @@ public class MovStockBrowser extends ModalJFrame {
 	private static final String DATE_FORMAT_DD_MM_YY_HH_MM = "dd/MM/yy HH:mm";
 	
 	private String currencyCod;
+        
+    /*
+     *Adds to facilitate the selection of products 
+     */
+    private JPanel searchPanel;
+    private JTextField searchTextField;
+    private JButton searchButton;
 	
+	private HashMap<Integer, String> supMap = new HashMap<Integer, String>();
+
+	private MedicalBrowsingManager medicalManager = Context.getApplicationContext().getBean(MedicalBrowsingManager.class);
+	private MedicalTypeBrowserManager medicalTypeBrowserManager = Context.getApplicationContext().getBean(MedicalTypeBrowserManager.class);
+	private MedicaldsrstockmovTypeBrowserManager medicaldsrstockmovTypeBrowserManager = Context.getApplicationContext().getBean(MedicaldsrstockmovTypeBrowserManager.class);
+	private MovBrowserManager movBrowserManager = Context.getApplicationContext().getBean(MovBrowserManager.class);
+	private HospitalBrowsingManager hospitalManager = Context.getApplicationContext().getBean(HospitalBrowsingManager.class);
+	private SupplierBrowserManager supplierBrowserManager = Context.getApplicationContext().getBean(SupplierBrowserManager.class);
+
 	public MovStockBrowser() {
 		myFrame = this;
 		setTitle(MessageBundle.getMessage("angal.medicalstock.stockmovementbrowser"));
+		try {
+			supMap = supplierBrowserManager.getHashMap(true);
+		} catch (OHServiceException e) {
+			OHServiceExceptionUtil.showMessages(e);
+		}
+
 		Toolkit kit = Toolkit.getDefaultToolkit();
 		Dimension screensize = kit.getScreenSize();
 		final int pfrmBase = 30;
@@ -148,7 +184,7 @@ public class MovStockBrowser extends ModalJFrame {
 				* pfrmHeight / pfrmBase) / 2, screensize.width * pfrmWidth
 				/ pfrmBase, screensize.height * pfrmHeight / pfrmBase);
 		setContentPane(getContentpane());
-		
+
 		//setResizable(false);
 		updateTotals();
 		pack();
@@ -179,8 +215,65 @@ public class MovStockBrowser extends ModalJFrame {
 		if (MainMenu.checkUserGrants("btnpharmstockcharge")) buttonPanel.add(getChargeButton());
 		if (MainMenu.checkUserGrants("btnpharmstockdischarge")) buttonPanel.add(getDishargeButton());
 		buttonPanel.add(getExportToExcelButton());
+		buttonPanel.add(getStockCardButton());
+		buttonPanel.add(getStockLedgerButton());
 		buttonPanel.add(getCloseButton());
 		return buttonPanel;
+	}
+	
+	private JButton getStockCardButton() {
+		stockCardButton = new JButton(MessageBundle.getMessage("angal.medicalstock.stockcard"));
+		stockCardButton.setMnemonic(KeyEvent.VK_K);
+		stockCardButton.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				Medical medical = null;
+				if (movTable.getSelectedRow()>-1) { 
+					Movement movement = (Movement)(((MovBrowserModel) model).getValueAt(movTable.getSelectedRow(), -1));
+					medical = movement.getMedical();
+				}
+				
+				StockCardDialog stockCardDialog = new StockCardDialog(MovStockBrowser.this, 
+						medical, 
+						movDateFrom.getCompleteDate().getTime(), 
+						movDateTo.getCompleteDate().getTime());
+				medical = stockCardDialog.getMedical();
+				Date dateFrom = stockCardDialog.getDateFrom();
+				Date dateTo = stockCardDialog.getDateTo();
+				boolean toExcel = stockCardDialog.isExcel();
+				
+				if (!stockCardDialog.isCancel()) {
+					if (medical == null) {
+						JOptionPane.showMessageDialog(MovStockBrowser.this,
+								MessageBundle.getMessage("angal.medicalstock.chooseamedical"));
+						return;
+					}
+					new GenericReportPharmaceuticalStockCard("ProductLedger", dateFrom, dateTo, medical, null, toExcel);
+					return;
+				}
+			}
+		});
+		return stockCardButton;
+	}
+	
+	private JButton getStockLedgerButton() {
+		stockLedgerButton = new JButton(MessageBundle.getMessage("angal.medicalstock.stockledger"));
+		stockLedgerButton.setMnemonic(KeyEvent.VK_L);
+		stockLedgerButton.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				
+				StockLedgerDialog stockCardDialog = new StockLedgerDialog(MovStockBrowser.this, movDateFrom.getCompleteDate().getTime(), movDateTo.getCompleteDate().getTime());
+				Date dateFrom = stockCardDialog.getDateFrom();
+				Date dateTo = stockCardDialog.getDateTo();
+				
+				if (!stockCardDialog.isCancel()) {
+					new GenericReportPharmaceuticalStockCard("ProductLedger_multi", dateFrom, dateTo, null, null, false);
+					return;
+				}
+			}
+		});
+		return stockLedgerButton;
 	}
 
 	private JPanel getTablesPanel() {
@@ -216,24 +309,34 @@ public class MovStockBrowser extends ModalJFrame {
 	public void updateTotals() {
 		if (jTableTotal == null) return;
 		totalQti = 0;
-		if (!medicalBox.getSelectedItem().equals(MessageBundle.getMessage("angal.medicalstock.all")) &&
-				!typeBox.getSelectedItem().equals(MessageBundle.getMessage("angal.medicalstock.all"))) {
+		totalAmount = new BigDecimal(0);
+		
+		// quantity
+		if (!medicalBox.getSelectedItem().equals(MessageBundle.getMessage("angal.medicalstock.all"))) {
 			for (Movement mov : moves) {
-				totalQti += mov.getQuantity();
+				if (mov.getType().getType().contains("+")) {
+					totalQti += mov.getQuantity();
+				} else {
+					totalQti -= mov.getQuantity();
+				}
 			}
 			jTableTotal.getModel().setValueAt(totalQti, 0, 4);
 		} else {
 			jTableTotal.getModel().setValueAt(MessageBundle.getMessage("angal.common.notapplicable"), 0, 4);
 		}
-		totalAmount = new BigDecimal(0);
+		
+		// amount
 		for (Movement mov : moves) {
-			BigDecimal itemAmount = new BigDecimal(Double.toString(mov.getQuantity()));
-			if (mov.getType().getType().contains("+")) 
-			totalAmount = totalAmount.add(itemAmount.multiply(new BigDecimal(mov.getLot().getCost())));
-			else 
-				totalAmount = totalAmount.subtract(itemAmount.multiply(new BigDecimal(mov.getLot().getCost())));
+			BigDecimal itemAmount = new BigDecimal(mov.getQuantity());
+			if (GeneralData.LOTWITHCOST && mov.getLot().getCost() != null) {
+				if (mov.getType().getType().contains("+")) {
+					totalAmount = totalAmount.add(itemAmount.multiply(mov.getLot().getCost()));
+				} else {
+					totalQti -= mov.getQuantity();
+					totalAmount = totalAmount.subtract(itemAmount.multiply(mov.getLot().getCost()));
+				}
+			}
 		}
-		jTableTotal.getModel().setValueAt(currencyCod, 0, 11);
 		jTableTotal.getModel().setValueAt(totalAmount, 0, 12);
 	}
 
@@ -272,6 +375,7 @@ public class MovStockBrowser extends ModalJFrame {
 		JPanel label1Panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 		label1Panel.add(new JLabel(MessageBundle.getMessage("angal.common.description")));
 		medicalPanel.add(label1Panel);
+                medicalPanel.add(getMedicalSearchPanel());
 		JPanel medicalDescPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 		medicalDescPanel.add(getMedicalBox());
 		medicalPanel.add(medicalDescPanel);
@@ -362,7 +466,7 @@ public class MovStockBrowser extends ModalJFrame {
 	}
 
 	private JComboBox getWardBox() {
-		org.isf.ward.manager.WardBrowserManager wbm = new org.isf.ward.manager.WardBrowserManager();
+		WardBrowserManager wbm = Context.getApplicationContext().getBean(WardBrowserManager.class);
 		wardBox = new JComboBox();
 		wardBox.setPreferredSize(new Dimension(130,25));
 		wardBox.addItem(MessageBundle.getMessage("angal.medicalstock.all"));
@@ -380,12 +484,64 @@ public class MovStockBrowser extends ModalJFrame {
 		return wardBox;
 	}
 
+        private JPanel getMedicalSearchPanel() {
+            searchButton = new JButton();
+            searchButton.setPreferredSize(new Dimension(20, 20));
+            searchButton.setIcon(new ImageIcon("rsc/icons/zoom_r_button.png"));
+            searchButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    medicalBox.removeAllItems();
+                    ArrayList<Medical> medicals;
+                    try {
+                            medicals = medicalManager.getMedicals();
+                    } catch (OHServiceException e1) {
+                            medicals = null;
+                            OHServiceExceptionUtil.showMessages(e1);
+                    }
+                    if (null != medicals) {
+                        ArrayList<Medical> results = getSearchMedicalsResults(searchTextField.getText(), medicals);
+                        int originalSize = medicals.size();
+                        int resultsSize = results.size();
+                        if(originalSize == resultsSize) {
+                            medicalBox.addItem(MessageBundle.getMessage("angal.medicalstock.all"));
+                        }
+                        for (Medical aMedical: results) {
+                            medicalBox.addItem(aMedical);
+                        }
+                    }
+                }
+            });
+            
+            searchTextField = new JTextField(10);
+            searchTextField.setToolTipText(MessageBundle.getMessage("angal.medicalstock.pharmaceutical"));
+            searchTextField.addKeyListener(new KeyListener() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    int key = e.getKeyCode();
+                    if (key == KeyEvent.VK_ENTER) {
+                        searchButton.doClick();
+                    }
+                }
+                @Override
+                public void keyReleased(KeyEvent e) {}
+                @Override
+                public void keyTyped(KeyEvent e) {}
+            });
+            
+            searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            searchPanel.add(searchTextField);
+            searchPanel.add(searchButton);
+            searchPanel.setMaximumSize(new Dimension(150, 25));
+            searchPanel.setMinimumSize(new Dimension(150, 25));
+            searchPanel.setPreferredSize(new Dimension(150, 25));
+            return searchPanel;
+        }
 	private JComboBox getMedicalBox() {
 		medicalBox = new JComboBox();
 		medicalBox.setMaximumSize(new Dimension(150, 25));
 		medicalBox.setMinimumSize(new Dimension(150, 25));
 		medicalBox.setPreferredSize(new Dimension(150, 25));
-		MedicalBrowsingManager medicalManager = new MedicalBrowsingManager();
 		ArrayList<Medical> medical;
 		try {
 			medical = medicalManager.getMedicals();
@@ -425,13 +581,12 @@ public class MovStockBrowser extends ModalJFrame {
 	private JComboBox getMedicalTypeBox() {
 		medicalTypeBox = new JComboBox();
 		medicalTypeBox.setPreferredSize(new Dimension(130,25));
-		MedicalTypeBrowserManager medicalManager = new MedicalTypeBrowserManager();
 		ArrayList<MedicalType> medical;
 		
 		medicalTypeBox.addItem(MessageBundle.getMessage("angal.medicalstock.all"));
 		
 		try {
-			medical = medicalManager.getMedicalType();
+			medical = medicalTypeBrowserManager.getMedicalType();
 			
 			for (MedicalType aMedicalType : medical) {
 				medicalTypeBox.addItem(aMedicalType);
@@ -466,10 +621,9 @@ public class MovStockBrowser extends ModalJFrame {
 	private JComboBox getMovementTypeBox() {
 		typeBox = new JComboBox();
 		typeBox.setPreferredSize(new Dimension(130,25));
-		MedicaldsrstockmovTypeBrowserManager typeManager = new MedicaldsrstockmovTypeBrowserManager();
 		ArrayList<MovementType> type;
 		try {
-			type = typeManager.getMedicaldsrstockmovType();
+			type = medicaldsrstockmovTypeBrowserManager.getMedicaldsrstockmovType();
 		} catch (OHServiceException e1) {
 			type = null;
 			OHServiceExceptionUtil.showMessages(e1);
@@ -535,7 +689,6 @@ public class MovStockBrowser extends ModalJFrame {
 		if (jTableTotal == null) {
 			jTableTotal = new JTable();
 			
-			HospitalBrowsingManager hospitalManager = new HospitalBrowsingManager();
 			String currencyCod;
 			try {
 				currencyCod = hospitalManager.getHospitalCurrencyCod();
@@ -947,6 +1100,31 @@ public class MovStockBrowser extends ModalJFrame {
 		return filename.toString();
 	}
 
+        private ArrayList<Medical> getSearchMedicalsResults(String s, ArrayList<Medical> medicalsList) {
+            String query = s.trim();
+            ArrayList<Medical> results = new ArrayList<Medical>();
+            for (Medical medoc : medicalsList) {
+                if(!query.equals("")) {
+                    String[] patterns = query.split(" ");
+                    String code = medoc.getProd_code().toLowerCase();
+                    String description = medoc.getDescription().toLowerCase();
+                    boolean patternFound = false;
+                    for (String pattern : patterns) {
+                        if (code.contains(pattern.toLowerCase()) || description.contains(pattern.toLowerCase())) {
+                            patternFound = true;
+                            //It is sufficient that only one pattern matches the query
+                            break;
+                        }
+                    }
+                    if (patternFound){
+                        results.add(medoc);
+                    }
+                } else {
+                    results.add(medoc);
+                }
+            }		
+            return results;
+        }    
 
 	/**
 	 * This is the table model
@@ -973,9 +1151,8 @@ public class MovStockBrowser extends ModalJFrame {
 				GregorianCalendar movTo, GregorianCalendar lotPrepFrom,
 				GregorianCalendar lotPrepTo, GregorianCalendar lotDueFrom,
 				GregorianCalendar lotDueTo) {
-			MovBrowserManager manager = new MovBrowserManager();
 			try {
-				moves = manager.getMovements(medicalCode, medicalType, ward,
+				moves = movBrowserManager.getMovements(medicalCode, medicalType, ward,
 						movType, movFrom, movTo, lotPrepFrom, lotPrepTo,
 						lotDueFrom, lotDueTo);
 			} catch (OHServiceException e) {
@@ -1006,7 +1183,7 @@ public class MovStockBrowser extends ModalJFrame {
 		public Object getValueAt(int r, int c) {
 			Movement movement = moves.get(r);
 			Lot lot = movement.getLot();
-			Double cost = lot.getCost();
+			BigDecimal cost = lot.getCost();
 			int qty = movement.getQuantity();
 			int col = -1;
 			if (c == col) {
@@ -1038,11 +1215,12 @@ public class MovStockBrowser extends ModalJFrame {
 			} else if (c == ++col) {
 				return formatDate(lot.getDueDate());
 			} else if (c == ++col){
-				return movement.getOrigin();
+				Supplier origin = movement.getOrigin();
+				return origin != null ? supMap.get(new Integer(origin.getSupId())) : "";
 			} else if (c == ++col){
 				return cost;
-			} else if (c == ++col){
-				return cost * qty;
+			} else if (c == ++col && cost != null){
+				return cost.multiply(new BigDecimal(qty));
 			}
 			return null;
 		}
@@ -1108,13 +1286,9 @@ public class MovStockBrowser extends ModalJFrame {
 		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
 			Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 			setHorizontalAlignment(columnAlignment[column]);
-			if (column == 4) {
-				if (value instanceof Number) value = formatter1.format((Number) value);
-			}
-			if (column == 11) value = formatter100.format((Number) value);
-			if (column == 12) {
-				if (value instanceof Number) value = formatter10.format((Number) value);
-			}
+			if (column == 4 && value instanceof Number) value = formatter1.format((Number) value);
+			if (column == 11 && value instanceof Number) value = formatter100.format((Number) value);
+			if (column == 12 && value instanceof Number) value = formatter10.format((Number) value);
 			return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 		}
 	}

@@ -46,21 +46,23 @@ import org.isf.exa.model.ExamRow;
 import org.isf.generaldata.GeneralData;
 import org.isf.generaldata.MessageBundle;
 import org.isf.lab.manager.LabManager;
+import org.isf.serviceprinting.manager.PrintManager;
 import org.isf.lab.manager.LabRowManager;
 import org.isf.lab.model.Laboratory;
+import org.isf.lab.model.LaboratoryForPrint;
 import org.isf.lab.model.LaboratoryRow;
-import org.isf.lab.service.LabIoOperations;
 import org.isf.menu.manager.Context;
 import org.isf.patient.manager.PatientBrowserManager;
 import org.isf.patient.model.Patient;
 import org.isf.utils.exception.OHServiceException;
 import org.isf.utils.exception.gui.OHServiceExceptionUtil;
+import org.isf.utils.jobjects.ModalJFrame;
 import org.isf.utils.jobjects.VoLimitedTextField;
 import org.isf.utils.time.RememberDates;
 
-import com.toedter.calendar.JDateChooser;
+import org.isf.utils.jobjects.CustomJDateChooser;
 
-public class LabEditExtended extends JDialog {
+public class LabEditExtended extends ModalJFrame {
 	/**
 	 * 
 	 */
@@ -113,6 +115,7 @@ public class LabEditExtended extends JDialog {
 	private JLabel matLabel = null;
 	private JButton okButton = null;
 	private JButton cancelButton = null;
+	private JButton printButton = null;
 	private JComboBox matComboBox = null;
 	private JComboBox examComboBox = null;
 	private JComboBox examRowComboBox = null;
@@ -136,7 +139,7 @@ public class LabEditExtended extends JDialog {
 	//private JButton jSearchTrashButton = null;
 	
 	//private VoDateTextField examDateField = null;
-	private JDateChooser examDateFieldCal = null;
+	private CustomJDateChooser examDateFieldCal = null;
 	private GregorianCalendar dateIn = null;
 
 	
@@ -149,9 +152,16 @@ public class LabEditExtended extends JDialog {
 
 	
 	private ArrayList<ExamRow> eRows = null;
-
+	
+	//private LabManager labManager = new LabManager(Context.getApplicationContext().getBean(LabIoOperations.class));
+	private LabManager labManager = Context.getApplicationContext().getBean(LabManager.class);
+	private PrintManager printManager = Context.getApplicationContext().getBean(PrintManager.class);
+	private LabRowManager lRowManager = Context.getApplicationContext().getBean(LabRowManager.class);
+	private AdmissionBrowserManager admMan = Context.getApplicationContext().getBean(AdmissionBrowserManager.class);
+	private ExamRowBrowsingManager rowManager = Context.getApplicationContext().getBean(ExamRowBrowsingManager.class);
+	
 	public LabEditExtended(JFrame owner, Laboratory laboratory, boolean inserting) {
-		super(owner, true);
+		//super(owner, true);
 		insert = inserting;
 		lab = laboratory;
 		initialize();
@@ -351,7 +361,7 @@ public class LabEditExtended extends JDialog {
 		return dataPatient;
 	}
 
-	private JDateChooser getExamDateFieldCal() {
+	private CustomJDateChooser getExamDateFieldCal() {
 		java.util.Date myDate = null;
 		if (insert) {
 			dateIn = RememberDates.getLastLabExamDateGregorian();
@@ -361,7 +371,7 @@ public class LabEditExtended extends JDialog {
 		if (dateIn != null) {
 			myDate = dateIn.getTime();
 		}
-		return (new JDateChooser(myDate, "dd/MM/yy"));
+		return (new CustomJDateChooser(myDate, "dd/MM/yy"));
 	}
 	
 	private JCheckBox getInPatientCheckBox() {
@@ -380,7 +390,7 @@ public class LabEditExtended extends JDialog {
 	private JComboBox getPatientComboBox(String s) {
 		
 		//String key = s;
-		PatientBrowserManager patBrowser = new PatientBrowserManager();
+		PatientBrowserManager patBrowser = Context.getApplicationContext().getBean(PatientBrowserManager.class);
 		try {
 			if (insert){
 				pat = patBrowser.getPatient();
@@ -416,7 +426,6 @@ public class LabEditExtended extends JDialog {
 			patientComboBox.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent arg0) {
 					if (patientComboBox.getSelectedIndex()>0) {
-						AdmissionBrowserManager admMan = new AdmissionBrowserManager();
 						labPat=(Patient)patientComboBox.getSelectedItem();
 						setPatient(labPat);
 						Admission admission = null;
@@ -492,6 +501,7 @@ public class LabEditExtended extends JDialog {
 			buttonPanel.setBounds(0, dataPanelHeight+dataPatientHeight+resultPanelHeight, panelWidth, buttonPanelHeight);
 			buttonPanel.add(getOkButton(), null);
 			buttonPanel.add(getCancelButton(), null);
+			buttonPanel.add(getPrintButton(),null);
 		}
 		return buttonPanel;
 	}
@@ -500,7 +510,7 @@ public class LabEditExtended extends JDialog {
 		if (examComboBox == null) {
 			examComboBox = new JComboBox();
 			Exam examSel=null;
-			ExamBrowsingManager manager = new ExamBrowsingManager();
+			ExamBrowsingManager manager = Context.getApplicationContext().getBean(ExamBrowsingManager.class);
 			ArrayList<Exam> exams;
 			try {
 				exams = manager.getExams();
@@ -548,18 +558,14 @@ public class LabEditExtended extends JDialog {
 		if (matComboBox == null) {
 			matComboBox = new JComboBox();
 			matComboBox.addItem("");
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.blood"));
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.urine"));
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.stool"));
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.sputum"));
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.cfs"));
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.swabs"));
-			matComboBox.addItem(MessageBundle.getMessage("angal.lab.tissues"));
-			if (!insert) {
-				try {	
-					matComboBox.setSelectedItem(lab.getMaterial());
-					}
-				catch (Exception e) {}
+			for (String elem : labManager.getMaterialList()) {
+				matComboBox.addItem(elem);
+				if (!insert) {
+					try {	
+						matComboBox.setSelectedItem(lab.getMaterial());
+						}
+					catch (Exception e) {}
+				}
 			}
 		}
 		return matComboBox;
@@ -622,6 +628,38 @@ public class LabEditExtended extends JDialog {
 		return sexTextField;
 	}
 	
+	private JButton getPrintButton() {
+		if (printButton == null) {
+			printButton = new JButton(MessageBundle.getMessage("angal.lab.print"));
+			printButton.setMnemonic(KeyEvent.VK_P);
+			printButton.addActionListener(new ActionListener() {
+
+				public void actionPerformed(ActionEvent arg0) {					
+					try {
+						ArrayList<LaboratoryForPrint> labs = new ArrayList<LaboratoryForPrint>();
+						
+						labs.add(new LaboratoryForPrint(
+								lab.getCode(),
+								lab.getExam(),
+								lab.getDate(),
+								lab.getResult()
+							)
+						);
+						if (!labs.isEmpty()) {
+							
+							printManager.print("Laboratory",labs,0);
+						}
+					} catch (OHServiceException e) {
+						OHServiceExceptionUtil.showMessages(e);
+					}
+					
+				}
+
+			});
+		}
+		return printButton;
+	}
+	
 	private JButton getCancelButton() {
 		if (cancelButton == null) {
 			cancelButton = new JButton();
@@ -650,7 +688,13 @@ public class LabEditExtended extends JDialog {
 					}
 					String matSelected=(String)matComboBox.getSelectedItem();
 					examSelected=(Exam)examComboBox.getSelectedItem();
-					labPat=(Patient)patientComboBox.getSelectedItem();
+					try {
+						labPat=(Patient)patientComboBox.getSelectedItem();
+					} catch (ClassCastException e2) {
+						JOptionPane.showMessageDialog(LabEditExtended.this, 
+								MessageBundle.getMessage("angal.lab.pleaseselectapatient"));
+						return;
+					}
 					GregorianCalendar gregDate = new GregorianCalendar();
 					try {
 						gregDate.setTime(examDateFieldCal.getDate());
@@ -661,7 +705,6 @@ public class LabEditExtended extends JDialog {
 					}
 					
 					ArrayList<String> labRow = new ArrayList<String>();
-					LabManager manager = new LabManager(Context.getApplicationContext().getBean(LabIoOperations.class));
 					lab.setDate(new GregorianCalendar());
 					lab.setExamDate(gregDate);
 					RememberDates.setLastLabExamDate(gregDate);
@@ -689,7 +732,7 @@ public class LabEditExtended extends JDialog {
 					if (insert) {
 						lab.setAge(labPat.getAge());
 						try {
-							result = manager.newLaboratory(lab,	labRow);
+							result = labManager.newLaboratory(lab,	labRow);
 						} catch (OHServiceException e1) {
 							result = false;
 							OHServiceExceptionUtil.showMessages(e1);
@@ -698,7 +741,7 @@ public class LabEditExtended extends JDialog {
 					}
 					else {
 						try {
-							result = manager.updateLaboratory(lab, labRow);
+							result = labManager.updateLaboratory(lab, labRow);
 						} catch (OHServiceException e1) {
 							result = false;
 							OHServiceExceptionUtil.showMessages(e1);
@@ -734,10 +777,9 @@ public class LabEditExtended extends JDialog {
 		}
 		examRowComboBox.addItem(result);
 
-		ExamRowBrowsingManager rowManager = new ExamRowBrowsingManager();
 		ArrayList<ExamRow> rows;
 		try {
-			rows = rowManager.getExamRow(examSelected.getCode());
+			rows = rowManager.getExamRowByExamCode(examSelected.getCode());
 		} catch (OHServiceException e) {
 			rows = null;
 			OHServiceExceptionUtil.showMessages(e);
@@ -757,11 +799,10 @@ public class LabEditExtended extends JDialog {
 		resultPanel.removeAll();
 		resultPanel.setLayout(new BoxLayout(resultPanel, BoxLayout.Y_AXIS));
 		String examId = examSelected.getCode();
-		ExamRowBrowsingManager eRowManager = new ExamRowBrowsingManager();
 		eRows = null;
 		
 		try {
-			eRows = eRowManager.getExamRow(examId);
+			eRows = rowManager.getExamRowByExamCode(examId);
 		} catch (OHServiceException e1) {
 			OHServiceExceptionUtil.showMessages(e1);
 		}
@@ -771,7 +812,6 @@ public class LabEditExtended extends JDialog {
 					resultPanel.add(new SubPanel(r, "N"));
 			}
 		} else {
-			LabRowManager lRowManager = new LabRowManager();
 
 			ArrayList<LaboratoryRow> lRows;
 			try {

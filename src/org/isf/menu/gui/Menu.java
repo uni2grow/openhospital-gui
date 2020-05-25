@@ -1,13 +1,18 @@
 package org.isf.menu.gui;
 
+import java.awt.Toolkit;
 import java.io.File;
 
 import javax.swing.JFrame;
 
 import org.apache.log4j.PropertyConfigurator;
 import org.isf.generaldata.Version;
+import org.isf.menu.manager.Context;
+import org.isf.utils.jobjects.WaitCursorEventQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class Menu {
 
@@ -25,7 +30,9 @@ public class Menu {
 		checkOHVersion();
 		checkJavaVersion();
 		JFrame.setDefaultLookAndFeelDecorated(false);
-		new SplashWindow3("rsc"+File.separator+"images"+File.separator+"Splash.jpg",null,3000);	
+		new SplashWindow3("rsc"+File.separator+"images"+File.separator+"Splash.jpg",null,3000);
+		WaitCursorEventQueue waitQueue = new WaitCursorEventQueue(10,Toolkit.getDefaultToolkit().getSystemEventQueue());
+		Toolkit.getDefaultToolkit().getSystemEventQueue().push(waitQueue);
 	}
 	
 	private static void checkOHVersion() {
@@ -47,6 +54,8 @@ public class Menu {
 
 	public static void main(String[] args) {
 		PropertyConfigurator.configure(new File("./rsc/log4j.properties").getAbsolutePath());
+		ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext.xml");
+		Context.setApplicationContext(context);
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				createAndShowGUI();

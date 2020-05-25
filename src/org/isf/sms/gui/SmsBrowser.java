@@ -33,6 +33,7 @@ import javax.swing.table.DefaultTableModel;
 import org.apache.log4j.PropertyConfigurator;
 import org.isf.generaldata.GeneralData;
 import org.isf.generaldata.MessageBundle;
+import org.isf.menu.manager.Context;
 import org.isf.sms.manager.SmsManager;
 import org.isf.sms.model.Sms;
 import org.isf.utils.exception.OHServiceException;
@@ -41,7 +42,7 @@ import org.isf.utils.jobjects.ModalJFrame;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 
-import com.toedter.calendar.JDateChooser;
+import org.isf.utils.jobjects.CustomJDateChooser;
 
 /**
  * @author Mwithi
@@ -66,7 +67,7 @@ public class SmsBrowser extends ModalJFrame {
 	private int width;
 	private int eight;
 
-	private SmsManager smsManager = new SmsManager();
+	private SmsManager smsManager = Context.getApplicationContext().getBean(SmsManager.class);
 	private List<Sms> smsList = null;
 	
 	private final DateTime dateTimeAtStartOfToday = new DateTime(new DateMidnight());  
@@ -74,8 +75,8 @@ public class SmsBrowser extends ModalJFrame {
 
 	private SmsTableModel model;
 	private JPanel jFilterPanel;
-	private JDateChooser jFromDateChooser;
-	private JDateChooser jToDateChooser;
+	private CustomJDateChooser jFromDateChooser;
+	private CustomJDateChooser jToDateChooser;
 	
 	private Date dateFrom;
 	private Date dateTo;
@@ -138,9 +139,9 @@ public class SmsBrowser extends ModalJFrame {
 		return jDateToLabel;
 	}
 	
-	private JDateChooser getJFromDateChooser() {
+	private CustomJDateChooser getJFromDateChooser() {
 		if (jFromDateChooser == null) {
-			jFromDateChooser = new JDateChooser();
+			jFromDateChooser = new CustomJDateChooser();
 			jFromDateChooser.setLocale(new Locale(GeneralData.LANGUAGE));
 			jFromDateChooser.setDate(dateTimeAtStartOfToday.toDate());
 			jFromDateChooser.setDateFormatString("dd/MM/yy"); //$NON-NLS-1$
@@ -158,9 +159,9 @@ public class SmsBrowser extends ModalJFrame {
 		return jFromDateChooser;
 	}
 	
-	private JDateChooser getJToDateChooser() {
+	private CustomJDateChooser getJToDateChooser() {
 		if (jToDateChooser == null) {
-			jToDateChooser = new JDateChooser();
+			jToDateChooser = new CustomJDateChooser();
 			jToDateChooser.setLocale(new Locale(GeneralData.LANGUAGE));
 			jToDateChooser.setDate(dateTimeAtEndOfToday.toDate());
 			jToDateChooser.setDateFormatString("dd/MM/yy"); //$NON-NLS-1$
